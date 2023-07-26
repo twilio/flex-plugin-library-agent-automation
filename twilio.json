@@ -1,4 +1,4 @@
 {
-    "name": "Flex Library Plugin",
-    "description": "Template Description"
+  "name": "Agent Automation",
+  "description": "This feature provides auto select, auto accept and auto wrap up behaviour for agent tasks. Tasks qualify for a configuration set based on their channel and a set of required task attributes. The first configuration set to match is the configuration set used"
 }
