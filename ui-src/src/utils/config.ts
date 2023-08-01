@@ -1,5 +1,5 @@
 import { ITask } from '@twilio/flex-ui';
-
+import * as Flex from '@twilio/flex-ui';
 import { TaskQualificationConfig } from '../types/ServiceConfiguration';
 
 interface TaskAttributesQualificationConfig {
@@ -7,33 +7,22 @@ interface TaskAttributesQualificationConfig {
   value: string;
 }
 
-const configuration = [
-  {
-    channel: 'voice',
-    auto_accept: true,
-    auto_select: false,
-    auto_wrapup: true,
-    required_attributes: [],
-    wrapup_time: 5000,
-    default_outcome: '',
-  },
-  {
-    channel: 'chat',
-    auto_accept: false,
-    auto_select: false,
-    auto_wrapup: false,
-    required_attributes: [],
-    wrapup_time: 30000,
-    default_outcome: '',
-  },
-];
+type FlexUIAttributes = Flex.ServiceConfiguration['ui_attributes'];
+
+interface UIAttributes extends FlexUIAttributes {
+  agent_automation: {
+    configuration: any;
+  };
+}
+
+const configuration = Flex?.Manager?.getInstance()?.configuration as UIAttributes;
 
 export const getMatchingTaskConfiguration = (task: ITask): TaskQualificationConfig | null => {
   const { taskChannelUniqueName: channel } = task;
   const attributes = task.attributes as any;
   let first_matched_config = null as TaskQualificationConfig | null;
 
-  configuration.forEach((config) => {
+  configuration.agent_automation.configuration.forEach((config: any) => {
     let matched_config = true;
     if (config.channel === channel) {
       config.required_attributes?.forEach((required_attribute: TaskAttributesQualificationConfig) => {
