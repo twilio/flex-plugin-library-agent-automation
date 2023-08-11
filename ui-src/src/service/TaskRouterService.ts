@@ -144,7 +144,7 @@ class TaskRouterService extends ApiService {
     };
 
     return this.fetchJsonWithReject<UpdateTaskAttributesResponse>(
-      `https://${this.serverlessDomain}/agentAtuomation/update-task-attributes`,
+      `https://${this.serverlessDomain}/agentAutomation/update-task-attributes`,
       {
         method: 'post',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
