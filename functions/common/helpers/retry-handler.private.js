@@ -1,7 +1,4 @@
 const { random, isNumber } = require('lodash');
-
-snooze = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
 /**
  * @param {object} error the error from the calling function
  * @param {object} parameters the parameters to call the callback with
@@ -24,39 +21,32 @@ snooze = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
  *   retry handler in the browser are still encouraged.
  */
 exports.retryHandler = async (error, parameters, callback) => {
-  const { TWILIO_SERVICE_MAX_BACKOFF, TWILIO_SERVICE_MIN_BACKOFF, TWILIO_SERVICE_RETRY_LIMIT, ENABLE_LOCAL_LOGGING } =
-    process.env;
-  const { context } = parameters;
-  const {
-    response,
-    message: errorMessage,
-    status: errorStatus,
-    moreInfo: twilioDocPage,
-    code: twilioErrorCode,
-  } = error;
-  const attempts = parameters.attempts ?? 0;
-  const status = errorStatus ? errorStatus : response ? response.status : 500;
-  const retryAttemptsMessage = attempts === 1 ? `${attempts} retry attempt` : `${attempts} retry attempts`;
+  const snooze = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  if (!isNumber(parameters.attempts))
+    throw 'Invalid parameters object passed. Parameters must contain the number of attempts';
+
+  const { TWILIO_SERVICE_MAX_BACKOFF, TWILIO_SERVICE_MIN_BACKOFF, TWILIO_SERVICE_RETRY_LIMIT } = process.env;
+  const { attempts, context } = parameters;
+  const { response, message: errorMessage } = error;
+  const status = response ? response.status : 500;
+  const logWarning = attempts == 1 ? `${parameters.attempts} retry attempt` : `${parameters.attempts} retry attempts`;
   const message = errorMessage ? errorMessage : error;
 
   if (
-    (status === 412 || status === 429 || status === 503) &&
+    (status == 412 || status == 429 || status == 503) &&
     isNumber(attempts) &&
     attempts < TWILIO_SERVICE_RETRY_LIMIT
   ) {
-    console.warn(
-      `retrying ${context.PATH}.${callback.name}() after ${retryAttemptsMessage}, http-status-code: ${status}`,
-    );
+    console.warn(`retrying ${context.PATH}.${callback.name}() after ${logWarning}, status code: ${status}`);
     if (status === 429 || status === 503) await snooze(random(TWILIO_SERVICE_MIN_BACKOFF, TWILIO_SERVICE_MAX_BACKOFF));
 
     const updatedAttempts = attempts + 1;
     const updatedParameters = { ...parameters, attempts: updatedAttempts };
     return callback(updatedParameters);
+  } else {
+    console.error(
+      `retrying ${context.PATH}.${callback.name}() failed after ${logWarning}, status code: ${status}, message: ${message}`,
+    );
+    return { success: false, message, status };
   }
-
-  if (ENABLE_LOCAL_LOGGING) {
-    const logMessage = `\n\n${context.PATH}.${callback.name}() failed after ${retryAttemptsMessage},\n http-status-code\t: ${status},\n twilio-error-code\t: ${twilioErrorCode},\n twilio-doc-page\t: ${twilioDocPage},\n error-message\t\t: ${message}`;
-    console.error(logMessage);
-  }
-  return { success: false, message, status, twilioErrorCode, twilioDocPage };
 };

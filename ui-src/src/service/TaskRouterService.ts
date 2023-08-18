@@ -1,52 +1,13 @@
-import ApiService from './ApiService';
-import { EncodedParams } from '../types/Params';
-import { ErrorManager, FlexPluginErrorType } from '../utils/ErrorManager';
-import { TaskAssignmentStatus } from '../types/task-router/Task';
 import { merge } from 'lodash';
 import { TaskHelper } from '@twilio/flex-ui';
 
-export interface Queue {
-  targetWorkers: string;
-  friendlyName: string;
-  sid: string;
-}
+import ApiService from './ApiService';
+import { EncodedParams } from '../types/Params';
+import { ErrorManager, FlexPluginErrorType } from '../utils/ErrorManager';
 
 interface UpdateTaskAttributesResponse {
   success: boolean;
 }
-
-interface GetQueuesResponse {
-  success: boolean;
-  queues: Array<Queue>;
-}
-
-interface GetWorkerChannelsResponse {
-  success: boolean;
-  workerChannels: Array<WorkerChannelCapacityResponse>;
-}
-
-export interface WorkerChannelCapacityResponse {
-  accountSid: string;
-  assignedTasks: number;
-  available: boolean;
-  availableCapacityPercentage: number;
-  configuredCapacity: number;
-  dateCreated: string;
-  dateUpdated: string;
-  sid: string;
-  taskChannelSid: string;
-  taskChannelUniqueName: string;
-  workerSid: string;
-  workspaceSid: string;
-  url: string;
-}
-interface UpdateWorkerChannelResponse {
-  success: boolean;
-  message?: string;
-  workerChannelCapacity: WorkerChannelCapacityResponse;
-}
-
-const queues = null as null | Array<Queue>;
 
 class TaskRouterService extends ApiService {
   private instanceSid = this.manager.serviceConfiguration.flex_service_instance_sid;
@@ -112,7 +73,7 @@ class TaskRouterService extends ApiService {
     }
   }
 
-  async updateTaskAttributes(taskSid: string, attributesUpdate: object, deferUpdates = false): Promise<boolean> {
+  updateTaskAttributes = async (taskSid: string, attributesUpdate: object, deferUpdates = false): Promise<boolean> => {
     if (deferUpdates) {
       // Defer update; merge new attrs into local storage
       this.addToLocalStorage(taskSid, attributesUpdate);
@@ -126,34 +87,39 @@ class TaskRouterService extends ApiService {
       return true;
     }
 
-    const result = await this.#updateTaskAttributes(taskSid, JSON.stringify(mergedAttributesUpdate));
-
-    if (result.success) {
-      // we've pushed updates; remove pending attributes
-      this.removeFromLocalStorage(taskSid);
-    }
-
-    return result.success;
-  }
-
-  #updateTaskAttributes = async (taskSid: string, attributesUpdate: string): Promise<UpdateTaskAttributesResponse> => {
-    const encodedParams: EncodedParams = {
-      Token: encodeURIComponent(this.manager.user.token),
-      taskSid: encodeURIComponent(taskSid),
-      attributesUpdate: encodeURIComponent(attributesUpdate),
-    };
-
-    return this.fetchJsonWithReject<UpdateTaskAttributesResponse>(
-      `https://${this.serverlessDomain}/agentAutomation/update-task-attributes`,
-      {
-        method: 'post',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: this.buildBody(encodedParams),
-      },
-    ).then((response): UpdateTaskAttributesResponse => {
-      return {
-        ...response,
+    return new Promise((resolve, reject) => {
+      const encodedParams: EncodedParams = {
+        Token: encodeURIComponent(this.manager.user.token),
+        taskSid: encodeURIComponent(taskSid),
+        attributesUpdate: encodeURIComponent(JSON.stringify(mergedAttributesUpdate)),
       };
+
+      this.fetchJsonWithReject<UpdateTaskAttributesResponse>(
+        `${this.serverlessDomain}/agentAutomation/update-task-attributes`,
+        {
+          method: 'post',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: this.buildBody(encodedParams),
+        },
+      )
+        .then((response: UpdateTaskAttributesResponse) => {
+          if (response.success) {
+            // we've pushed updates; remove pending attributes
+            this.removeFromLocalStorage(taskSid);
+          }
+          resolve(response.success);
+        })
+        .catch((e) => {
+          console.error(`Could not update task attributes for the task ${taskSid}`, e);
+          ErrorManager.createAndProcessError(`Could not update task attributes for the task ${taskSid}\r\n`, {
+            type: FlexPluginErrorType.serverless,
+            description:
+              e instanceof Error ? `${e.message}` : `Could not update task attributes for the task ${taskSid}\r\n`,
+            context: 'Plugin.TaskRouterService',
+            wrappedError: e,
+          });
+          reject(e);
+        });
     });
   };
 }
