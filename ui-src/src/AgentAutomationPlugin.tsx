@@ -8,7 +8,7 @@ import CustomizePasteElements from './utils/PasteThemeProvider';
 
 const PLUGIN_NAME = 'AgentAutomation';
 
-export default class ConferencePlugin extends FlexPlugin {
+export default class AgentAutomationPlugin extends FlexPlugin {
   constructor() {
     super(PLUGIN_NAME);
   }
