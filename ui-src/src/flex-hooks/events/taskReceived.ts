@@ -1,7 +1,7 @@
 import * as Flex from '@twilio/flex-ui';
 import { ITask } from '@twilio/flex-ui';
 import { TaskQualificationConfig } from '../../types/ServiceConfiguration';
-
+import { Analytics, Event } from '../../utils/Analytics';
 import { getMatchingTaskConfiguration } from '../../utils/config';
 
 async function selectAndAcceptTask(task: ITask, taskConfig: TaskQualificationConfig) {
@@ -16,8 +16,20 @@ async function selectAndAcceptTask(task: ITask, taskConfig: TaskQualificationCon
   if (taskChannelUniqueName === 'voice' && direction === 'outbound') return;
 
   // Select and accept the task per configuration
-  if (taskConfig.auto_select) await Flex.Actions.invokeAction('SelectTask', { sid });
-  if (taskConfig.auto_accept) await Flex.Actions.invokeAction('AcceptTask', { sid });
+  if (taskConfig.auto_select) {
+    await Flex.Actions.invokeAction('SelectTask', { sid });
+    Analytics.track(Event.TASK_AUTO_SELECTED, {
+      taskSid: task.taskSid,
+      channel: taskChannelUniqueName,
+    });
+  }
+  if (taskConfig.auto_accept) {
+    await Flex.Actions.invokeAction('AcceptTask', { sid });
+    Analytics.track(Event.TASK_AUTO_ACCEPTED, {
+      taskSid: task.taskSid,
+      channel: taskChannelUniqueName,
+    });
+  }
 }
 
 export const taskReceivedListenerHook = function (flex: typeof Flex, manager: Flex.Manager) {

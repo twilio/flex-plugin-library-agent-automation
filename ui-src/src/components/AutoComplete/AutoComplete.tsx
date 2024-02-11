@@ -5,6 +5,7 @@ import React from 'react';
 import { TaskQualificationConfig } from '../../types/ServiceConfiguration';
 import { getMatchingTaskConfiguration } from '../../utils/config';
 import TaskRouterService from '../../service/TaskRouterService';
+import { Analytics, Event } from '../../utils/Analytics';
 
 export type Props = {
   task: ITask;
@@ -24,7 +25,7 @@ export interface OwnProps {
 }
 
 const autoCompleteTask = async (task: ITask, taskConfig: TaskQualificationConfig) => {
-  const { sid } = task;
+  const { sid, taskChannelUniqueName } = task;
 
   try {
     const scheduledTime = task.dateUpdated.getTime() + taskConfig.wrapup_time;
@@ -41,6 +42,10 @@ const autoCompleteTask = async (task: ITask, taskConfig: TaskQualificationConfig
           });
         }
         Flex.Actions.invokeAction('CompleteTask', { sid });
+        Analytics.track(Event.TASK_AUTO_WRAPPED, {
+          taskSid: task.taskSid,
+          channel: taskChannelUniqueName,
+        });
       }
     }, timeout);
   } catch (error) {

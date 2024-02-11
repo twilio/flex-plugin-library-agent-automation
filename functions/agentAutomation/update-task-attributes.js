@@ -1,6 +1,6 @@
 const { prepareFlexFunction, extractStandardResponse } = require(Runtime.getFunctions()['helpers/prepare-function']
   .path);
-const TaskRouterOperations = require(Runtime.getFunctions()['common/twilio-wrappers/taskrouter'].path);
+const TaskRouterOperations = require(Runtime.getFunctions()['twilio-wrappers/taskrouter'].path);
 
 const requiredParameters = [
   { key: 'taskSid', purpose: 'unique ID of task to update' },
